@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
 import qs.Commons
@@ -69,6 +70,7 @@ Panel {
       refreshClients()
       selectedKind = clients.length > 0 ? "window" : (homes.length > 0 ? "home" : "window")
       selectedIndex = 0
+      if (panelFlick) panelFlick.contentY = 0
     }
   }
 
@@ -278,6 +280,20 @@ Panel {
     armedDelete = ""
   }
 
+  function ensureCursorVisible(item) {
+    if (!item || !panelFlick) return
+    var pos = item.mapToItem(content, 0, 0)
+    var y = pos.y
+    var bottom = y + item.height
+    var viewY = panelFlick.contentY
+    var viewH = panelFlick.height
+    var maxY = Math.max(0, panelFlick.contentHeight - viewH)
+    if (y < viewY)
+      panelFlick.contentY = Math.max(0, y - Style.space(8))
+    else if (bottom > viewY + viewH)
+      panelFlick.contentY = Math.min(maxY, bottom - viewH + Style.space(8))
+  }
+
   IpcHandler {
     target: "app-homes"
 
@@ -329,6 +345,7 @@ Panel {
       onTabRequested: function(direction) { root.switchPanel(direction) }
 
       onActivateRequested: root.learnFocused()
+      onDeleteRequested: root.forgetSelected()
 
       onTextKey: function(key) {
         if (key === "l" || key === "L") root.learnFocused()
@@ -345,10 +362,21 @@ Panel {
         else if (key === "`" || key === "~") root.clearWorkspace()
       }
 
-      Column {
-        id: content
-        width: parent.width
-        spacing: Style.spacing.xxl
+      Flickable {
+        id: panelFlick
+        anchors.fill: parent
+        contentWidth: width
+        contentHeight: content.implicitHeight
+        clip: true
+        boundsBehavior: Flickable.StopAtBounds
+        flickableDirection: Flickable.VerticalFlick
+        interactive: contentHeight > height
+        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+
+        Column {
+          id: content
+          width: panelFlick.width
+          spacing: Style.spacing.xxl
 
         Item {
           width: parent.width
@@ -477,6 +505,7 @@ Panel {
               foreground: root.fg
               fill: Style.hoverFillFor(root.fg, root.accent)
               hasCursor: current
+              onHasCursorChanged: if (hasCursor) root.ensureCursorVisible(this)
 
               HoverHandler {
                 onHoveredChanged: if (hovered) {
@@ -574,6 +603,7 @@ Panel {
               foreground: root.fg
               fill: Style.hoverFillFor(root.fg, root.accent)
               hasCursor: current
+              onHasCursorChanged: if (hasCursor) root.ensureCursorVisible(this)
 
               HoverHandler {
                 onHoveredChanged: if (hovered) {
@@ -776,6 +806,7 @@ Panel {
           font.family: Style.font.family
           font.pixelSize: Style.font.caption
           wrapMode: Text.WordWrap
+        }
         }
       }
     }
