@@ -315,7 +315,10 @@ Panel {
     open: root.opened
     focusTarget: keyCatcher
     contentWidth: panel.fittedContentWidth(Style.space(430))
-    contentHeight: panel.fittedContentHeight(content.implicitHeight)
+    // Cap to the overlay window, not Hyprland's physical pixel size. At
+    // scale 1.5, screen.height can be 1080 while the layer is 720, and an
+    // uncapped card then hangs off the bottom with nothing to scroll.
+    contentHeight: panel.fittedContentHeight(content.implicitHeight, panel.height > 80 ? panel.height - 80 : 520)
 
     PanelKeyCatcher {
       id: keyCatcher
@@ -347,6 +350,17 @@ Panel {
       onActivateRequested: root.learnFocused()
       onDeleteRequested: root.forgetSelected()
 
+      WheelHandler {
+        acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+        onWheel: function(event) {
+          if (!panelFlick || panelFlick.contentHeight <= panelFlick.height) return
+          var delta = event.pixelDelta.y !== 0 ? event.pixelDelta.y : event.angleDelta.y * 0.4
+          var maxY = Math.max(0, panelFlick.contentHeight - panelFlick.height)
+          panelFlick.contentY = Math.max(0, Math.min(maxY, panelFlick.contentY - delta))
+          event.accepted = true
+        }
+      }
+
       onTextKey: function(key) {
         if (key === "l" || key === "L") root.learnFocused()
         else if (key === "f" || key === "F") root.cyclePlacement()
@@ -370,8 +384,10 @@ Panel {
         clip: true
         boundsBehavior: Flickable.StopAtBounds
         flickableDirection: Flickable.VerticalFlick
-        interactive: contentHeight > height
-        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+        interactive: true
+        ScrollBar.vertical: ScrollBar {
+          policy: panelFlick.contentHeight > panelFlick.height ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff
+        }
 
         Column {
           id: content
@@ -422,12 +438,27 @@ Panel {
             }
           }
           trailingControl: Component {
-            PanelActionButton {
-              iconText: "󰐕"
-              tooltipText: "Learn focused window"
-              foreground: root.fg
-              enabled: root.focused !== null
-              onClicked: root.learnFocused()
+            Row {
+              spacing: Style.space(6)
+
+              PanelActionButton {
+                iconText: "󰐕"
+                tooltipText: "Learn focused window"
+                foreground: root.fg
+                enabled: root.focused !== null
+                onClicked: root.learnFocused()
+              }
+
+              PanelActionButton {
+                visible: root.selectedHome !== null
+                iconText: root.armedDelete === (root.selectedHome ? root.selectedHome.id : "") ? "󰆴" : "󰅙"
+                tooltipText: root.armedDelete === (root.selectedHome ? root.selectedHome.id : "")
+                  ? "Click again to forget"
+                  : "Forget this home"
+                foreground: root.fg
+                hoverColor: root.bar && root.bar.urgent ? root.bar.urgent : root.fg
+                onClicked: root.forgetSelected()
+              }
             }
           }
         }
