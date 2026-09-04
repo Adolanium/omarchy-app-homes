@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "adolanium.app-homes",
+  "name": "App Homes",
+  "version": "0.0.1",
+  "author": "Adolanium",
+  "license": "MIT",
+  "description": "Pin an app to a home workspace and a few behaviors. Hyprland obeys on every future launch — Slack on 4, the browser on 2, btop floating, 1Password hidden from screen share.",
+  "kinds": [
+    "bar-widget",
+    "service"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml",
+    "service": "Service.qml"
+  },
+  "barWidget": {
+    "displayName": "App Homes",
+    "description": "Pin apps to workspaces. Click to learn the focused window.",
+    "category": "System",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}
